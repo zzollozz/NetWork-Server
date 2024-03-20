@@ -35,7 +35,7 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
 
     s.bind((host, port))
     s.listen()
-
+    print("Сервер запущен")
     while True:
         client_socket, client_address = s.accept()
         print(f"[+] {client_address} connected.")
