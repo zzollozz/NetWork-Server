@@ -1,27 +1,53 @@
 import socket
 from datetime import datetime
+from threading import Thread
 
-host = '127.0.0.1'
+host = '0.0.0.0'
 port = 65432
+
+separator_token = "<SEP>"   # чтобы разделить имя клиента и сообщение
+
+client_sockets = set()
+
+def listen_for_client(cs):
+
+    while True:
+        try:
+            # продолжайте прослушивать сообщение из сокета `cs`
+            msg = cs.recv(1024).decode()
+        except Exception as e:
+            # client no longer connected
+            # remove it from the set
+            print(f"[!] Error: {e}")
+            client_sockets.remove(cs)
+        else:
+            # если мы получили сообщение, замените <SEP>
+            # token with ": " для красивой печати
+            msg = msg.replace(separator_token, ": ")
+
+        for client_socket in client_sockets:
+            # и отправить сообщение
+            client_socket.send(msg.encode())
+
 
 
 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-    print("Сервер запущен")
+
     s.bind((host, port))
     s.listen()
-    conn, addr = s.accept()
-    with conn:
-        name_client = addr[0]
-        print(f'Подключен клиент: {name_client}')
-        while True:
-            data = conn.recv(1024)
-            message = str(data, 'utf-8')
-            if not data:
-                print(f"Соединение с клиентом {name_client} закрыто")
-                break
-            date = datetime.now().strftime("%H:%M:%S")
-            print(f'Получено: от {name_client} в {date}\nсообщение:\n{repr(message)}')
-            conn.sendall(bytes(f"Сервер получил сообщение {date} от {name_client}", 'utf-8'))
+
+    while True:
+        client_socket, client_address = s.accept()
+        print(f"[+] {client_address} connected.")
+
+        client_sockets.add(client_socket)
+
+        t = Thread(target=listen_for_client, args=(client_socket,))
+        t.daemon = True
+        t.start()
+
+
+
 
 
 
